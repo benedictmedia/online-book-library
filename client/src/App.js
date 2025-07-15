@@ -1,74 +1,57 @@
 import React, { useState, useEffect } from 'react';
-import './App.css';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import BookList from './components/BookList'; // Import the new BookList component
+import './App.css'; // Assuming you have App.css for basic styling
 
 function App() {
-  const [message, setMessage] = useState('Loading...');
-  const [booksData, setBooksData] = useState([]);
-
-  // === PASTE YOUR EXACT BACKEND URL HERE ===
-  // Replace "YOUR_ACTUAL_BACKEND_PORT_3000_URL_FROM_PORTS_TAB"
-  const backendUrl = "https://vigilant-pancake-4jqgvggg5pjr3jq67-3000.app.github.dev"; // <-- PASTE YOUR URL HERE!
-  // === ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ===
+  const [backendMessage, setBackendMessage] = useState('Loading...');
+  const backendUrl = "https://vigilant-pancake-4jqgvggg5pjr3jq67-3000.app.github.dev"; // Your backend URL
 
   useEffect(() => {
     // Fetch welcome message from the backend's root route
-    fetch(`${backendUrl}/`)
-      .then(res => {
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
+    const fetchWelcomeMessage = async () => {
+      try {
+        const response = await fetch(`${backendUrl}/`);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
-        return res.text();
-      })
-      .then(data => {
-        setMessage(data);
-      })
-      .catch(error => {
+        const data = await response.text(); // Get text for root message
+        setBackendMessage(data);
+      } catch (error) {
         console.error("Error fetching welcome message:", error);
-        setMessage(`Failed to load welcome message: ${error.message}`);
-      });
+        setBackendMessage(`Failed to load backend message: ${error.message}`);
+      }
+    };
 
-    // Fetch books data from the backend's /books route
-    fetch(`${backendUrl}/books`)
-      .then(res => {
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
-        return res.json();
-      })
-      .then(data => {
-        setBooksData(data);
-      })
-      .catch(error => {
-        console.error("Error fetching books data:", error);
-        setBooksData([{ error: `Failed to load books: ${error.message}` }]);
-      });
-
-  }, [backendUrl]); // Add backendUrl to dependency array since it's now a direct dependency
+    fetchWelcomeMessage();
+  }, [backendUrl]);
 
   return (
-    <div className="App">
-      <header className="App-header">
-        <p>
-          **Frontend Status:** Running!
-        </p>
-        <p>
-          **Backend Message:** {message}
-        </p>
-        <h2>Books Data from Backend (showing current time from DB):</h2>
-        <ul>
-          {booksData.length > 0 ? (
-            booksData.map((item, index) => (
-              <li key={index}>
-                {item.error ? `Error: ${item.error}` : `Current Time: ${item.current_time}`}
-              </li>
-            ))
-          ) : (
-            <li>No books data received yet.</li>
-          )}
-        </ul>
-        <p>Backend URL being used: {backendUrl}</p>
-      </header>
-    </div>
+    <Router>
+      <div className="App">
+        <header className="App-header">
+          <h1>Online Book Library</h1>
+          <nav>
+            <Link to="/">Home</Link> | <Link to="/books">Books</Link>
+            {/* We'll add more links later for Add Book, Login, etc. */}
+          </nav>
+        </header>
+
+        <main>
+          <p><strong>Frontend Status:</strong> Running!</p>
+          <p><strong>Backend Message:</strong> {backendMessage}</p>
+          <p><strong>Backend URL being used:</strong> {backendUrl}</p>
+
+          <hr /> {/* Separator */}
+
+          <Routes>
+            <Route path="/" element={<h2>Welcome to the Library Home Page!</h2>} />
+            <Route path="/books" element={<BookList backendUrl={backendUrl} />} />
+            {/* More routes will go here (e.g., /books/:id, /add-book, /login) */}
+          </Routes>
+        </main>
+      </div>
+    </Router>
   );
 }
 
