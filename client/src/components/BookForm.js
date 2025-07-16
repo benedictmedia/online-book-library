@@ -12,6 +12,7 @@ function BookForm() {
     introduction: '',
     file_path: ''
   });
+  
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false); // New loading state for edit mode
@@ -19,34 +20,34 @@ function BookForm() {
   const { token, backendUrl } = useUser();
 
   // useEffect to fetch book data if in edit mode (i.e., id is present)
-  useEffect(() => {
-    if (id) { // If there's an ID, we're in edit mode
-      setLoading(true);
-      const fetchBookToEdit = async () => {
-        try {
-          const response = await fetch(`${backendUrl}/books/${id}`);
-          if (!response.ok) {
-            if (response.status === 404) {
-                throw new Error('Book not found for editing.');
-            }
-            throw new Error(`HTTP error! status: ${response.status}`);
+useEffect(() => {
+  if (id) { // If there's an ID, we're in edit mode
+    setLoading(true);
+    const fetchBookToEdit = async () => {
+      try {
+        const response = await fetch(`${backendUrl}/books/${id}`); // <--- Check this line
+        if (!response.ok) {
+          if (response.status === 404) {
+              throw new Error('Book not found for editing.');
           }
-          const data = await response.json();
-          // Format date for input type="date"
-          if (data.published_date) {
-            data.published_date = new Date(data.published_date).toISOString().split('T')[0];
-          }
-          setBook(data);
-        } catch (err) {
-          console.error(`Error fetching book ${id} for edit:`, err);
-          setError(`Failed to load book for editing: ${err.message}`);
-        } finally {
-          setLoading(false);
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
-      };
-      fetchBookToEdit();
-    }
-  }, [id, backendUrl]);
+        const data = await response.json();
+        // Format date for input type="date"
+        if (data.published_date) {
+          data.published_date = new Date(data.published_date).toISOString().split('T')[0];
+        }
+        setBook(data);
+      } catch (err) {
+        console.error(`Error fetching book ${id} for edit:`, err);
+        setError(`Failed to load book for editing: ${err.message}`);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchBookToEdit();
+  }
+}, [id, backendUrl]); // Dependencies are important!
 
 
   const handleChange = (e) => {

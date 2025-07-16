@@ -149,9 +149,19 @@ app.get('/books', async (req, res) => {
   }
 });
 
-// GET a single book by ID (typically public)
-app.get('/books/:id', async (req, res) => {
-  // ... (no changes here, keep as is)
+// GET a single book by ID (typically public, or could be authenticated if all book details are protected)
+app.get('/books/:id', async (req, res) => { // Make sure no authentication middleware is here for now
+  try {
+    const { id } = req.params;
+    const result = await pool.query('SELECT * FROM books WHERE id = $1', [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).send('Book not found');
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(`Error executing query for GET /books/${req.params.id}:`, err.stack);
+    res.status(500).send('Error retrieving book from database');
+  }
 });
 
 // POST a new book (requires admin role)
