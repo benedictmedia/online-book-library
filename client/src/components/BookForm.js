@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useUser } from '../UserContext'; // <--- ADD THIS
+import React, { useState, useEffect } from 'react'; // Add useEffect
+import { useNavigate, useParams } from 'react-router-dom'; // <--- ADD useParams
+import { useUser } from '../UserContext';
 
 function BookForm() {
+  const { id } = useParams(); // Get ID from URL for edit mode
   const [book, setBook] = useState({
     title: '',
     author: '',
@@ -13,8 +14,40 @@ function BookForm() {
   });
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false); // New loading state for edit mode
   const navigate = useNavigate();
-const { token, backendUrl } = useUser(); // <--- MODIFIED: Get token and backendUrl
+  const { token, backendUrl } = useUser();
+
+  // useEffect to fetch book data if in edit mode (i.e., id is present)
+  useEffect(() => {
+    if (id) { // If there's an ID, we're in edit mode
+      setLoading(true);
+      const fetchBookToEdit = async () => {
+        try {
+          const response = await fetch(`${backendUrl}/books/${id}`);
+          if (!response.ok) {
+            if (response.status === 404) {
+                throw new Error('Book not found for editing.');
+            }
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          const data = await response.json();
+          // Format date for input type="date"
+          if (data.published_date) {
+            data.published_date = new Date(data.published_date).toISOString().split('T')[0];
+          }
+          setBook(data);
+        } catch (err) {
+          console.error(`Error fetching book ${id} for edit:`, err);
+          setError(`Failed to load book for editing: ${err.message}`);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchBookToEdit();
+    }
+  }, [id, backendUrl]);
+
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -25,44 +58,52 @@ const { token, backendUrl } = useUser(); // <--- MODIFIED: Get token and backend
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault(); // Prevent default form submission
-
-    setMessage(''); // Clear previous messages
-    setError('');   // Clear previous errors
+    e.preventDefault();
+    setMessage('');
+    setError('');
 
     try {
-      const response = await fetch(`${backendUrl}/books`, {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}` // <--- ADD THIS HEADER
-  },
-  body: JSON.stringify(book),
-});
-      const data = await response.json(); // Even if error, try to parse JSON for server message
+      const method = id ? 'PUT' : 'POST'; // Use PUT for edit, POST for add
+      const url = id ? `${backendUrl}/books/${id}` : `${backendUrl}/books`;
+
+      const response = await fetch(url, {
+        method: method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(book),
+      });
+
+      const data = await response.json();
 
       if (!response.ok) {
-        // If response is not 2xx, it's an error
         throw new Error(data.message || `HTTP error! status: ${response.status}`);
       }
 
-      setMessage('Book added successfully!');
-      // Optionally clear form or redirect
-      setBook({ // Clear form fields
-        title: '', author: '', isbn: '', published_date: '', introduction: '', file_path: ''
-      });
-      // Redirect to the book list after a short delay
-      setTimeout(() => navigate('/books'), 1500);
-
+      setMessage(id ? 'Book updated successfully!' : 'Book added successfully!');
+      if (!id) { // Only clear form if it was an add operation
+        setBook({ title: '', author: '', isbn: '', published_date: '', introduction: '', file_path: '' });
+      }
+      setTimeout(() => navigate('/books'), 1500); // Redirect to book list
     } catch (err) {
-      console.error("Error adding book:", err);
+      console.error(`Error ${id ? 'updating' : 'adding'} book:`, err);
       setError(`Error: ${err.message}`);
     }
   };
 
+  if (loading) {
+    return <p>Loading book for editing...</p>;
+  }
+
+  if (error && id) { // Show error if in edit mode and fetch failed
+    return <p style={{ color: 'red' }}>{error}</p>;
+  }
+
   return (
     <div>
-      <h2>Add New Book</h2>
+      <h2>{id ? 'Edit Book' : 'Add New Book'}</h2> {/* Dynamic heading */}
+      {/* ... rest of the form is largely the same ... */}
       <form onSubmit={handleSubmit}>
         <div>
           <label htmlFor="title">Title:</label>
@@ -88,10 +129,10 @@ const { token, backendUrl } = useUser(); // <--- MODIFIED: Get token and backend
           <label htmlFor="file_path">File Path (e.g., /files/bookname.pdf):</label>
           <input type="text" id="file_path" name="file_path" value={book.file_path} onChange={handleChange} required />
         </div>
-        <button type="submit">Add Book</button>
+        <button type="submit">{id ? 'Update Book' : 'Add Book'}</button> {/* Dynamic button text */}
       </form>
       {message && <p style={{ color: 'green' }}>{message}</p>}
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+      {error && !id && <p style={{ color: 'red' }}>{error}</p>} {/* Only show general error for add mode */}
     </div>
   );
 }

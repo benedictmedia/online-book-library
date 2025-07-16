@@ -140,7 +140,13 @@ function authorizeRole(roles) { // `roles` is an array of allowed roles, e.g., [
 
 // GET all books (typically public)
 app.get('/books', async (req, res) => {
-  // ... (no changes here, keep as is)
+  try {
+    const allBooks = await pool.query('SELECT * FROM books');
+    res.json(allBooks.rows);
+  } catch (err) {
+    console.error('Error executing query for GET /books:', err.stack);
+    res.status(500).send('Error retrieving books from database');
+  }
 });
 
 // GET a single book by ID (typically public)

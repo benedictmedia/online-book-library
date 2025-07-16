@@ -11,6 +11,7 @@ import './App.css';
 // Define your backend URL (keep it here as it's passed to UserProvider)
 const BACKEND_URL = "https://vigilant-pancake-4jqgvggg5pjr3jq67-3000.app.github.dev";
 
+
 function AppContent() {
   const { user, isAdmin, logout } = useUser(); // Use the hook to access user context
   const [backendMessage, setBackendMessage] = useState('Loading...');
@@ -62,14 +63,15 @@ function AppContent() {
         <hr />
 
         <Routes>
-          <Route path="/" element={<h2>Welcome to the Library Home Page!</h2>} />
-          <Route path="/books" element={<BookList backendUrl={BACKEND_URL} />} />
-          <Route path="/books/:id" element={<BookDetail backendUrl={BACKEND_URL} />} />
-          <Route path="/add-book" element={<BookForm backendUrl={BACKEND_URL} />} />
-          <Route path="/register" element={<Register />} /> {/* New route */}
-          <Route path="/login" element={<Login />} />       {/* New route */}
-          {/* Add routes for Edit/Delete Book later */}
+  <Route path="/" element={<h2>Welcome to the Library Home Page!</h2>} />
+  <Route path="/books" element={<BookList />} /> {/* backendUrl is now passed via UserProvider */}
+  <Route path="/books/:id" element={<BookDetail />} /> {/* backendUrl is now passed via UserProvider */}
+  <Route path="/add-book" element={<BookForm />} />
+  <Route path="/edit-book/:id" element={<BookForm />} /> {/* New route for editing */}
+  <Route path="/register" element={<Register />} />
+  <Route path="/login" element={<Login />} />
         </Routes>
+
       </main>
     </div>
   );
