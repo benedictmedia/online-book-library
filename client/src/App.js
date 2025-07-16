@@ -1,39 +1,27 @@
-import React, { useState, useEffect } from 'react';
+// src/App.js
+import React from 'react'; // Ensure React is imported here
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import BookList from './components/BookList';
 import BookDetail from './components/BookDetail';
 import BookForm from './components/BookForm';
-import Register from './components/Register'; // <--- ADD THIS
-import Login from './components/Login';       // <--- ADD THIS
-import { UserProvider, useUser } from './UserContext'; // <--- ADD THIS
+import RegisterForm from './components/RegisterForm';
+import LoginForm from './components/LoginForm';
+import Home from './components/Home';
+import { UserProvider, useUser } from './UserContext';
 import './App.css';
 
-// Define your backend URL (keep it here as it's passed to UserProvider)
-const BACKEND_URL = "https://vigilant-pancake-4jqgvggg5pjr3jq67-3000.app.github.dev";
+import { ToastContainer } from 'react-toastify'; // Keep this import
+import 'react-toastify/dist/ReactToastify.css'; // Keep this import
+
+// Define your backend URL (make sure this is the CORRECT, current Codespace URL)
+// Please VERIFY THIS URL from your Codespaces "Ports" tab for port 3000
+const BACKEND_URL = "https://vigilant-pancake-4jqgvggg5pjr3jq67-3000.app.github.dev/"; // <--- DOUBLE-CHECK AND UPDATE THIS!
 
 
 function AppContent() {
-  const { user, isAdmin, logout } = useUser(); // Use the hook to access user context
-  const [backendMessage, setBackendMessage] = useState('Loading...');
-
-  useEffect(() => {
-    // Fetch welcome message from the backend's root route
-    const fetchWelcomeMessage = async () => {
-      try {
-        const response = await fetch(`${BACKEND_URL}/`);
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.text();
-        setBackendMessage(data);
-      } catch (error) {
-        console.error("Error fetching welcome message:", error);
-        setBackendMessage(`Failed to load backend message: ${error.message}`);
-      }
-    };
-
-    fetchWelcomeMessage();
-  }, []); // Empty dependency array, runs once on mount
+  const { user, isAdmin, logout } = useUser();
+  // Removed backendMessage state and useEffect for simplicity, as it's not critical for debugging the main issue.
+  // We can add it back later if everything else is working.
 
   return (
     <div className="App">
@@ -56,23 +44,25 @@ function AppContent() {
       </header>
 
       <main>
-        <p><strong>Frontend Status:</strong> Running!</p>
+        {/* Temporarily remove backend message display to isolate the hook issue */}
+        {/* <p><strong>Frontend Status:</strong> Running!</p>
         <p><strong>Backend Message:</strong> {backendMessage}</p>
-        <p><strong>Backend URL being used:</strong> {BACKEND_URL}</p>
+        <p><strong>Backend URL being used:</strong> {BACKEND_URL}</p> */}
 
         <hr />
 
         <Routes>
-  <Route path="/" element={<h2>Welcome to the Library Home Page!</h2>} />
-  <Route path="/books" element={<BookList />} /> {/* backendUrl is now passed via UserProvider */}
-  <Route path="/books/:id" element={<BookDetail />} /> {/* backendUrl is now passed via UserProvider */}
-  <Route path="/add-book" element={<BookForm />} />
-  <Route path="/edit-book/:id" element={<BookForm />} /> {/* New route for editing */}
-  <Route path="/register" element={<Register />} />
-  <Route path="/login" element={<Login />} />
+          <Route path="/" element={<Home />} />
+          <Route path="/books" element={<BookList />} />
+          <Route path="/books/:id" element={<BookDetail />} />
+          <Route path="/add-book" element={<BookForm />} />
+          <Route path="/edit-book/:id" element={<BookForm />} />
+          <Route path="/register" element={<RegisterForm />} />
+          <Route path="/login" element={<LoginForm />} />
         </Routes>
-
       </main>
+      {/* ToastContainer should be directly within a functional component's render method */}
+      <ToastContainer position="top-right" autoClose={5000} hideProgressBar={false} newestOnTop={false} closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover />
     </div>
   );
 }
@@ -81,7 +71,7 @@ function AppContent() {
 function App() {
   return (
     <Router>
-      <UserProvider backendUrl={BACKEND_URL}> {/* Pass backendUrl to the Provider */}
+      <UserProvider backendUrl={BACKEND_URL}>
         <AppContent />
       </UserProvider>
     </Router>

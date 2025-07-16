@@ -2,14 +2,13 @@ require('dotenv').config();
 
 const express = require('express');
 const { Pool } = require('pg');
-const bcrypt = require('bcrypt'); // <--- ADD THIS
-const jwt = require('jsonwebtoken'); // <--- ADD THIS
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 const app = express();
 const cors = require('cors');
-// ... (rest of your existing imports)
 
 const port = process.env.PORT || 3000;
-const jwtSecret = process.env.JWT_SECRET; // <--- ADD THIS
+const jwtSecret = process.env.JWT_SECRET;
 
 // Use CORS middleware - This should be before your routes
 app.use(cors());
@@ -53,8 +52,6 @@ app.post('/register', async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10); // 10 salt rounds
 
-    // Default role is 'user' as per schema default, or 'admin' if specified (for initial setup)
-    // For production, you might not allow 'admin' registration directly
     const result = await pool.query(
       'INSERT INTO users (username, email, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING id, username, email, role',
       [username, email, hashedPassword, 'user'] // Always register as 'user'
@@ -138,19 +135,77 @@ function authorizeRole(roles) { // `roles` is an array of allowed roles, e.g., [
 
 // --- BOOK API ENDPOINTS ---
 
-// GET all books (typically public)
+// GET all books (with optional search/filter and pagination)
 app.get('/books', async (req, res) => {
   try {
-    const allBooks = await pool.query('SELECT * FROM books');
-    res.json(allBooks.rows);
+    const { search, author, isbn, published_year, page = 1, limit = 10 } = req.query; // <--- MODIFIED: Added page and limit
+    let query = 'SELECT * FROM books';
+    let countQuery = 'SELECT COUNT(*) FROM books'; // <--- ADDED: Count query
+    const queryParams = [];
+    let paramIndex = 1;
+    const conditions = [];
+
+    // Build WHERE clause based on provided search/filter parameters
+    if (search) {
+      conditions.push(`(title ILIKE $${paramIndex} OR author ILIKE $${paramIndex} OR isbn ILIKE $${paramIndex})`);
+      queryParams.push(`%${search}%`);
+      paramIndex++;
+    }
+    if (author) {
+      conditions.push(`author ILIKE $${paramIndex}`);
+      queryParams.push(`%${author}%`);
+      paramIndex++;
+    }
+    if (isbn) {
+      conditions.push(`isbn ILIKE $${paramIndex}`);
+      queryParams.push(`%${isbn}%`);
+      paramIndex++;
+    }
+    if (published_year) {
+      const yearInt = parseInt(published_year, 10);
+      if (!isNaN(yearInt)) {
+        conditions.push(`published_date = $${paramIndex}`);
+        queryParams.push(yearInt);
+        paramIndex++;
+      }
+    }
+
+    if (conditions.length > 0) {
+      const whereClause = ' WHERE ' + conditions.join(' AND ');
+      query += whereClause;
+      countQuery += whereClause; // Apply conditions to count query as well
+    }
+
+    // Get total count first (without LIMIT/OFFSET)
+    const totalCountResult = await pool.query(countQuery, queryParams);
+    const totalBooks = parseInt(totalCountResult.rows[0].count, 10); // <--- ADDED: Total count
+
+    // Add ORDER BY, LIMIT, and OFFSET for pagination
+    query += ' ORDER BY title ASC';
+
+    // Ensure page and limit are positive integers
+    const parsedPage = Math.max(1, parseInt(page, 10));
+    const parsedLimit = Math.max(1, parseInt(limit, 10));
+    const offset = (parsedPage - 1) * parsedLimit; // <--- ADDED: Calculate offset
+
+    query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`; // <--- MODIFIED: Add LIMIT and OFFSET
+    queryParams.push(parsedLimit, offset); // <--- ADDED: Add limit and offset to parameters
+
+    const result = await pool.query(query, queryParams);
+    res.json({
+      books: result.rows,
+      totalBooks, // <--- ADDED: Return total count
+      currentPage: parsedPage,
+      totalPages: Math.ceil(totalBooks / parsedLimit)
+    });
   } catch (err) {
     console.error('Error executing query for GET /books:', err.stack);
     res.status(500).send('Error retrieving books from database');
   }
 });
 
-// GET a single book by ID (typically public, or could be authenticated if all book details are protected)
-app.get('/books/:id', async (req, res) => { // Make sure no authentication middleware is here for now
+// GET a single book by ID
+app.get('/books/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query('SELECT * FROM books WHERE id = $1', [id]);
@@ -173,7 +228,7 @@ app.post('/books', authenticateToken, authorizeRole(['admin']), async (req, res)
     let publishedYear = null;
     if (published_date) {
       const year = parseInt(published_date, 10);
-      if (isNaN(year) || year < 1000 || year > new Date().getFullYear() + 50) { // Example year range validation
+      if (isNaN(year) || year < 1000 || year > new Date().getFullYear() + 50) {
         return res.status(400).send('Published Year must be a valid year (e.g., 1999).');
       }
       publishedYear = year;
@@ -185,7 +240,7 @@ app.post('/books', authenticateToken, authorizeRole(['admin']), async (req, res)
 
     const result = await pool.query(
       'INSERT INTO books (title, author, isbn, published_date, introduction, file_path) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [title, author, isbn, publishedYear, introduction, file_path] // Use publishedYear here
+      [title, author, isbn, publishedYear, introduction, file_path]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -207,7 +262,7 @@ app.put('/books/:id', authenticateToken, authorizeRole(['admin']), async (req, r
     let publishedYear = null;
     if (published_date) {
       const year = parseInt(published_date, 10);
-      if (isNaN(year) || year < 1000 || year > new Date().getFullYear() + 50) { // Example year range validation
+      if (isNaN(year) || year < 1000 || year > new Date().getFullYear() + 50) {
         return res.status(400).send('Published Year must be a valid year (e.g., 1999).');
       }
       publishedYear = year;
@@ -215,7 +270,7 @@ app.put('/books/:id', authenticateToken, authorizeRole(['admin']), async (req, r
 
     const result = await pool.query(
       'UPDATE books SET title = $1, author = $2, isbn = $3, published_date = $4, introduction = $5, file_path = $6 WHERE id = $7 RETURNING *',
-      [title, author, isbn, publishedYear, introduction, file_path, id] // Use publishedYear here
+      [title, author, isbn, publishedYear, introduction, file_path, id]
     );
     if (result.rows.length === 0) {
       return res.status(404).send('Book not found');
@@ -231,7 +286,7 @@ app.put('/books/:id', authenticateToken, authorizeRole(['admin']), async (req, r
 });
 
 // DELETE a book by ID (requires admin role)
-app.delete('/books/:id', authenticateToken, authorizeRole(['admin']), async (req, res) => { // <--- MODIFIED
+app.delete('/books/:id', authenticateToken, authorizeRole(['admin']), async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query('DELETE FROM books WHERE id = $1 RETURNING *', [id]);
