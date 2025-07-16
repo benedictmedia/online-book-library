@@ -80,7 +80,7 @@ function BookList() {
                 <strong>ISBN:</strong> {book.isbn} <br />
                 {book.published_date && (
                   <p>
-                    <strong>Published:</strong> {new Date(book.published_date).toDateString()}
+                    <strong>Published:</strong> {book.published_date}
                   </p>
                 )}
                 {book.introduction && <p>{book.introduction}</p>}

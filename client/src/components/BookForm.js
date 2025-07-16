@@ -12,7 +12,7 @@ function BookForm() {
     introduction: '',
     file_path: ''
   });
-  
+
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false); // New loading state for edit mode
@@ -21,11 +21,11 @@ function BookForm() {
 
   // useEffect to fetch book data if in edit mode (i.e., id is present)
 useEffect(() => {
-  if (id) { // If there's an ID, we're in edit mode
+  if (id) {
     setLoading(true);
     const fetchBookToEdit = async () => {
       try {
-        const response = await fetch(`${backendUrl}/books/${id}`); // <--- Check this line
+        const response = await fetch(`${backendUrl}/books/${id}`);
         if (!response.ok) {
           if (response.status === 404) {
               throw new Error('Book not found for editing.');
@@ -33,9 +33,12 @@ useEffect(() => {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-        // Format date for input type="date"
+        // Extract only the year from published_date if it exists
         if (data.published_date) {
-          data.published_date = new Date(data.published_date).toISOString().split('T')[0];
+          // Assuming published_date from backend is a full date string
+          data.published_date = new Date(data.published_date).getFullYear().toString();
+        } else {
+          data.published_date = ''; // Ensure it's an empty string if null
         }
         setBook(data);
       } catch (err) {
@@ -47,7 +50,7 @@ useEffect(() => {
     };
     fetchBookToEdit();
   }
-}, [id, backendUrl]); // Dependencies are important!
+}, [id, backendUrl]);
 
 
   const handleChange = (e) => {
@@ -118,10 +121,20 @@ useEffect(() => {
           <label htmlFor="isbn">ISBN (13 digits):</label>
           <input type="text" id="isbn" name="isbn" value={book.isbn} onChange={handleChange} required />
         </div>
-        <div>
-          <label htmlFor="published_date">Published Date:</label>
-          <input type="date" id="published_date" name="published_date" value={book.published_date} onChange={handleChange} />
-        </div>
+        // ... inside the form ...
+<div>
+  <label htmlFor="published_date">Published Year:</label> {/* Change label text */}
+  <input
+    type="number" // Change type to number
+    id="published_date"
+    name="published_date"
+    value={book.published_date}
+    onChange={handleChange}
+    min="1000" // Example minimum year
+    max={new Date().getFullYear() + 5} // Allow current year + a few future years (for upcoming books)
+    placeholder="e.g., 2023" // Add placeholder
+  />
+</div>
         <div>
           <label htmlFor="introduction">Introduction:</label>
           <textarea id="introduction" name="introduction" value={book.introduction} onChange={handleChange}></textarea>
