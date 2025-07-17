@@ -1,5 +1,5 @@
 // src/App.js
-import React from 'react'; // Ensure React is imported here
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import BookList from './components/BookList';
 import BookDetail from './components/BookDetail';
@@ -10,18 +10,14 @@ import Home from './components/Home';
 import { UserProvider, useUser } from './UserContext';
 import './App.css';
 
-// import { ToastContainer } from 'react-toastify'; // Keep this import
-// import 'react-toastify/dist/ReactToastify.css'; // Keep this import
+// Add this import for react-hot-toast
+import { Toaster } from 'react-hot-toast'; // The component that renders toasts
 
 // Define your backend URL (make sure this is the CORRECT, current Codespace URL)
-// Please VERIFY THIS URL from your Codespaces "Ports" tab for port 3000
 const BACKEND_URL = "https://vigilant-pancake-4jqgvggg5pjr3jq67-3000.app.github.dev"; // <--- DOUBLE-CHECK AND UPDATE THIS!
-
 
 function AppContent() {
   const { user, isAdmin, logout } = useUser();
-  // Removed backendMessage state and useEffect for simplicity, as it's not critical for debugging the main issue.
-  // We can add it back later if everything else is working.
 
   return (
     <div className="App">
@@ -44,13 +40,7 @@ function AppContent() {
       </header>
 
       <main>
-        {/* Temporarily remove backend message display to isolate the hook issue */}
-        {/* <p><strong>Frontend Status:</strong> Running!</p>
-        <p><strong>Backend Message:</strong> {backendMessage}</p>
-        <p><strong>Backend URL being used:</strong> {BACKEND_URL}</p> */}
-
         <hr />
-
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/books" element={<BookList />} />
@@ -61,11 +51,12 @@ function AppContent() {
           <Route path="/login" element={<LoginForm />} />
         </Routes>
       </main>
+      {/* Replace ToastContainer with Toaster from react-hot-toast */}
+      <Toaster /> {/* This is where toasts will be rendered */}
     </div>
   );
 }
 
-// The main App component wraps AppContent with Router and UserProvider
 function App() {
   return (
     <Router>
