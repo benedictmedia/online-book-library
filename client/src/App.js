@@ -10,12 +10,12 @@ import Home from './components/Home';
 import { UserProvider, useUser } from './UserContext';
 import './App.css';
 
-import { ToastContainer } from 'react-toastify'; // Keep this import
-import 'react-toastify/dist/ReactToastify.css'; // Keep this import
+// import { ToastContainer } from 'react-toastify'; // Keep this import
+// import 'react-toastify/dist/ReactToastify.css'; // Keep this import
 
 // Define your backend URL (make sure this is the CORRECT, current Codespace URL)
 // Please VERIFY THIS URL from your Codespaces "Ports" tab for port 3000
-const BACKEND_URL = "https://vigilant-pancake-4jqgvggg5pjr3jq67-3000.app.github.dev/"; // <--- DOUBLE-CHECK AND UPDATE THIS!
+const BACKEND_URL = "https://vigilant-pancake-4jqgvggg5pjr3jq67-3000.app.github.dev"; // <--- DOUBLE-CHECK AND UPDATE THIS!
 
 
 function AppContent() {
@@ -61,8 +61,6 @@ function AppContent() {
           <Route path="/login" element={<LoginForm />} />
         </Routes>
       </main>
-      {/* ToastContainer should be directly within a functional component's render method */}
-      <ToastContainer position="top-right" autoClose={5000} hideProgressBar={false} newestOnTop={false} closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover />
     </div>
   );
 }
