@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:13-alpine # Using a lightweight PostgreSQL image
+    container_name: online-library-db # A friendly name for your database container
+    environment:
+      POSTGRES_DB: online_library # Your database name
+      POSTGRES_USER: postgres   # Your database user
+      POSTGRES_PASSWORD: password # Your database password (for development only)
+    ports:
+      - "5432:5432" # Map container port 5432 to host port 5432
+    volumes:
+      - db_data:/var/lib/postgresql/data # Persistent data volume
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql # To run your schema script on first run
+
+  api:
+    build:
+      context: . # Build from the current directory (where docker-compose.yml is)
+      dockerfile: Dockerfile # Specify your Dockerfile for the Node.js backend
+    container_name: online-library-api # A friendly name for your API container
+    environment:
+      DATABASE_URL: postgres://postgres:password@db:5432/online_library # DB URL using the service name 'db'
+      JWT_SECRET: JesusstartedHisministryattheageof30but@theage12hewasinthetempleaskingandasnweringquestions # Make sure this matches your server.js
+    ports:
+      - "3000:3000" # Map container port 3000 to host port 3000
+    depends_on:
+      - db # Ensure the database starts before the API
+    volumes:
+      - ./server:/app/server # Mount your backend code
+      - ./package.json:/app/package.json # Mount package.json for npm install
+      - ./package-lock.json:/app/package-lock.json # Mount package-lock.json
+      - /app/node_modules # Anonymous volume to prevent host node_modules from overriding container ones
+
+volumes:
+  db_data: # Define the named volume for database persistence

@@ -1,20 +1,20 @@
 /* src/components/BookList.js */
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom'; // Added 'Link' import
 import { useUser } from '../UserContext';
-import { toast } from 'react-toastify';
+import toast from 'react-hot-toast';
 
 function BookList() {
   const [books, setBooks] = useState([]);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
-  const { isAdmin, token, backendUrl } = useUser();
+  const { isAdmin, token, backendUrl } = useUser(); // Ensure isAdmin is correctly pulled from context
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
-  const [booksPerPage, setBooksPerPage] = useState(10); // You can make this configurable
+  const [booksPerPage, setBooksPerPage] = useState(10);
   const [totalBooks, setTotalBooks] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
@@ -23,23 +23,25 @@ function BookList() {
       setLoading(true);
       setError(null);
       try {
-        const url = new URL(`${backendUrl}/books`);
+        const url = new URL(`${backendUrl}/api/books`);
         if (searchTerm) {
           url.searchParams.append('search', searchTerm);
         }
-        // Append pagination parameters
         url.searchParams.append('page', currentPage);
         url.searchParams.append('limit', booksPerPage);
 
         const response = await fetch(url.toString());
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+          // It's useful to log the full response for debugging
+          const errorText = await response.text();
+          console.error(`Fetch error: ${response.status} - ${errorText}`);
+          throw new Error(`HTTP error! Status: ${response.status} - ${errorText}`);
         }
-        const responseData = await response.json(); // Expect an object with books, totalBooks, etc.
+        const responseData = await response.json();
 
-        setBooks(responseData.books); // Set books from the 'books' key
-        setTotalBooks(responseData.totalBooks); // Set total books count
-        setTotalPages(responseData.totalPages); // Set total pages count
+        setBooks(responseData.books);
+        setTotalBooks(responseData.totalBooks);
+        setTotalPages(responseData.totalPages);
       } catch (err) {
         console.error("Error fetching books:", err);
         setError(`Failed to load books: ${err.message}`);
@@ -56,7 +58,7 @@ function BookList() {
     return () => {
       clearTimeout(handler);
     };
-  }, [backendUrl, searchTerm, currentPage, booksPerPage]);
+  }, [backendUrl, searchTerm, currentPage, booksPerPage, token]); // Added 'token' as a dependency
 
   // Handle book deletion
   const handleDelete = async (bookId) => {
@@ -65,7 +67,7 @@ function BookList() {
     }
 
     try {
-      const response = await fetch(`${backendUrl}/books/${bookId}`, {
+      const response = await fetch(`${backendUrl}/api/books/${bookId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -74,8 +76,13 @@ function BookList() {
 
       if (response.status === 204) {
         toast.success('Book deleted successfully! 🗑️');
-        // Re-fetch books to ensure consistent pagination state after deletion
-        setCurrentPage(1); // Reset to page 1 after deletion to avoid empty pages if the last on a page was deleted.
+        // Re-fetch books intelligently to maintain pagination state
+        if (books.length === 1 && currentPage > 1) {
+          setCurrentPage(prevPage => prevPage - 1);
+        } else {
+          // Re-fetch the current page, by re-running the useEffect
+          setBooks([]); // Triggering a state update that causes useEffect to re-run
+        }
       } else {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to delete book.');
@@ -101,7 +108,8 @@ function BookList() {
 
   // Generate page numbers for display
   const pageNumbers = [];
-  for (let i = 1; i <= totalPages; i++) {
+  const safeTotalPages = isNaN(totalPages) ? 1 : totalPages;
+  for (let i = 1; i <= safeTotalPages; i++) {
     pageNumbers.push(i);
   }
 
@@ -116,6 +124,24 @@ function BookList() {
   return (
     <div>
       <h2>All Books</h2>
+
+      {/* Add New Book Button - ONLY SHOW IF ADMIN */}
+      {isAdmin && (
+        <div style={{ marginBottom: '20px' }}>
+          <Link to="/add-book" style={{
+            padding: '10px 15px',
+            backgroundColor: '#28a745', // Green color
+            color: 'white',
+            textDecoration: 'none',
+            borderRadius: '4px',
+            fontWeight: 'bold',
+            display: 'inline-block' // Ensures proper spacing if other elements are inline
+          }}>
+            Add New Book ➕
+          </Link>
+        </div>
+      )}
+
       <div style={{ marginBottom: '20px', display: 'flex', gap: '10px', alignItems: 'center' }}>
         <input
           type="text"
@@ -127,21 +153,20 @@ function BookList() {
           }}
           style={{ padding: '8px', width: '300px', borderRadius: '4px', border: '1px solid #ccc' }}
         />
-        {/* --- UNCOMMENTED: Dropdown for booksPerPage --- */}
         <label htmlFor="booksPerPage" style={{ marginLeft: '20px' }}>Items per page:</label>
         <select
-            id="booksPerPage"
-            value={booksPerPage}
-            onChange={(e) => {
-                setBooksPerPage(Number(e.target.value));
-                setCurrentPage(1); // Reset to page 1 when changing items per page
-            }}
-            style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+          id="booksPerPage"
+          value={booksPerPage}
+          onChange={(e) => {
+            setBooksPerPage(Number(e.target.value));
+            setCurrentPage(1); // Reset to page 1 when changing items per page
+          }}
+          style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
         >
-            <option value="5">5</option>
-            <option value="10">10</option>
-            <option value="20">20</option>
-            <option value="50">50</option> {/* Added more options */}
+          <option value="5">5</option>
+          <option value="10">10</option>
+          <option value="20">20</option>
+          <option value="50">50</option>
         </select>
       </div>
 
@@ -160,6 +185,7 @@ function BookList() {
                 )}
                 {book.introduction && <p style={{ fontSize: '0.9em', color: '#555' }}>{book.introduction}</p>}
 
+                {/* Edit and Delete Buttons - ONLY SHOW IF ADMIN */}
                 {isAdmin && (
                   <div style={{ marginTop: '10px' }}>
                     <button onClick={() => navigate(`/edit-book/${book.id}`)} style={{ marginRight: '10px', padding: '8px 12px', cursor: 'pointer' }}>Edit</button>
@@ -209,7 +235,8 @@ function BookList() {
           </div>
         </>
       ) : (
-        !loading && <p>No books found in the library. Try adding one or adjust your search.</p>
+        // Only show 'No books found' if not loading and no error
+        !loading && !error && <p>No books found in the library. Try adding one or adjust your search.</p>
       )}
     </div>
   );

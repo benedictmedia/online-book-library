@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useUser } from '../UserContext';
-import { toast } from 'react-toastify';
+import toast from 'react-hot-toast'; // Corrected import from 'react-toastify' to 'react-hot-toast'
 
 function BookForm() {
   const { id } = useParams();
@@ -15,9 +15,9 @@ function BookForm() {
     file_path: ''
   });
 
-  const [validationErrors, setValidationErrors] = useState({}); // <--- ADDED: State for validation errors
-  const [loading, setLoading] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const [validationErrors, setValidationErrors] = useState({}); // State for validation errors
+  const [loading, setLoading] = useState(false); // For initial book load in edit mode
+  const [submitting, setSubmitting] = useState(false); // For form submission
   const navigate = useNavigate();
   const { token, backendUrl } = useUser();
 
@@ -27,7 +27,8 @@ function BookForm() {
       setLoading(true);
       const fetchBookToEdit = async () => {
         try {
-          const response = await fetch(`${backendUrl}/books/${id}`);
+          // --- IMPORTANT CHANGE HERE: Added /api/ to the URL ---
+          const response = await fetch(`${backendUrl}/api/books/${id}`);
           if (!response.ok) {
             if (response.status === 404) {
               throw new Error('Book not found for editing.');
@@ -35,6 +36,7 @@ function BookForm() {
             throw new Error(`HTTP error! status: ${response.status}`);
           }
           const data = await response.json();
+          // Ensure published_date is a string for the input field
           if (data.published_date) {
             data.published_date = data.published_date.toString();
           } else {
@@ -50,7 +52,7 @@ function BookForm() {
       };
       fetchBookToEdit();
     }
-  }, [id, backendUrl]);
+  }, [id, backendUrl]); // Dependencies for useEffect
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -64,7 +66,7 @@ function BookForm() {
     }
   };
 
-  // <--- ADDED: Validation function
+  // Validation function
   const validateForm = () => {
     const errors = {};
     const currentYear = new Date().getFullYear();
@@ -91,9 +93,6 @@ function BookForm() {
         if (isNaN(year) || year < 1000 || year > currentYear + 5) {
             errors.published_date = 'Published Year must be a valid 4-digit year (e.g., 1999) and not in the far future.';
         }
-    } else {
-        // You can make published_date optional, or required here
-        // errors.published_date = 'Published Year is required.';
     }
 
     setValidationErrors(errors);
@@ -103,24 +102,23 @@ function BookForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!validateForm()) { // <--- ADDED: Run validation before submitting
+    if (!validateForm()) { // Run validation before submitting
       toast.error('Please correct the highlighted errors in the form.');
       return; // Stop submission if validation fails
     }
 
     setSubmitting(true);
-    // setMessage(''); // No longer needed, toasts handle feedback
-    // setError('');   // No longer needed, toasts handle feedback
 
     try {
       const method = id ? 'PUT' : 'POST';
-      const url = id ? `${backendUrl}/books/${id}` : `${backendUrl}/books`;
+      // --- IMPORTANT CHANGE HERE: Added /api/ to the URL ---
+      const url = id ? `${backendUrl}/api/books/${id}` : `${backendUrl}/api/books`;
 
       const response = await fetch(url, {
         method: method,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}` // Ensure token is sent for authenticated requests
         },
         body: JSON.stringify(book),
       });
@@ -133,10 +131,10 @@ function BookForm() {
 
       toast.success(`Book ${id ? 'updated' : 'added'} successfully!`);
 
-      if (!id) {
+      if (!id) { // If adding a new book, clear the form
         setBook({ title: '', author: '', isbn: '', published_date: '', introduction: '', file_path: '' });
       }
-      setTimeout(() => navigate('/books'), 1500);
+      setTimeout(() => navigate('/books'), 1500); // Navigate to books list after success
     } catch (err) {
       console.error(`Error ${id ? 'updating' : 'adding'} book:`, err);
       toast.error(`Failed to ${id ? 'update' : 'add'} book: ${err.message}`);
@@ -161,9 +159,8 @@ function BookForm() {
             name="title"
             value={book.title}
             onChange={handleChange}
-            // Removed HTML 'required' as JS validation is more granular
           />
-          {validationErrors.title && <p style={{ color: 'red', fontSize: '0.8em' }}>{validationErrors.title}</p>} {/* <--- ADDED: Error display */}
+          {validationErrors.title && <p style={{ color: 'red', fontSize: '0.8em' }}>{validationErrors.title}</p>}
         </div>
         <div>
           <label htmlFor="author">Author:</label>
@@ -173,9 +170,8 @@ function BookForm() {
             name="author"
             value={book.author}
             onChange={handleChange}
-            // Removed HTML 'required'
           />
-          {validationErrors.author && <p style={{ color: 'red', fontSize: '0.8em' }}>{validationErrors.author}</p>} {/* <--- ADDED: Error display */}
+          {validationErrors.author && <p style={{ color: 'red', fontSize: '0.8em' }}>{validationErrors.author}</p>}
         </div>
         <div>
           <label htmlFor="isbn">ISBN (13 digits):</label>
@@ -185,9 +181,8 @@ function BookForm() {
             name="isbn"
             value={book.isbn}
             onChange={handleChange}
-            // Removed HTML 'required'
           />
-          {validationErrors.isbn && <p style={{ color: 'red', fontSize: '0.8em' }}>{validationErrors.isbn}</p>} {/* <--- ADDED: Error display */}
+          {validationErrors.isbn && <p style={{ color: 'red', fontSize: '0.8em' }}>{validationErrors.isbn}</p>}
         </div>
         <div>
           <label htmlFor="published_date">Published Year:</label>
@@ -201,7 +196,7 @@ function BookForm() {
             max={new Date().getFullYear() + 5}
             placeholder="e.g., 2023"
           />
-          {validationErrors.published_date && <p style={{ color: 'red', fontSize: '0.8em' }}>{validationErrors.published_date}</p>} {/* <--- ADDED: Error display */}
+          {validationErrors.published_date && <p style={{ color: 'red', fontSize: '0.8em' }}>{validationErrors.published_date}</p>}
         </div>
         <div>
           <label htmlFor="introduction">Introduction:</label>
@@ -220,9 +215,8 @@ function BookForm() {
             name="file_path"
             value={book.file_path}
             onChange={handleChange}
-            // Removed HTML 'required'
           />
-          {validationErrors.file_path && <p style={{ color: 'red', fontSize: '0.8em' }}>{validationErrors.file_path}</p>} {/* <--- ADDED: Error display */}
+          {validationErrors.file_path && <p style={{ color: 'red', fontSize: '0.8em' }}>{validationErrors.file_path}</p>}
         </div>
         <button type="submit" disabled={submitting}>
           {submitting ? (id ? 'Updating...' : 'Adding...') : (id ? 'Update Book' : 'Add Book')}
