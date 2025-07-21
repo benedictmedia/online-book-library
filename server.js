@@ -6,23 +6,38 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const app = express();
 const cors = require('cors');
+const multer = require('multer');
+const path = require('path');
 
 const port = process.env.PORT || 3000;
-const jwtSecret = process.env.JWT_SECRET; // Ensure this is set in your .env file!
+const jwtSecret = process.env.JWT_SECRET;
 
-// Use CORS middleware - This should be before your routes
+// Use CORS middleware
 app.use(cors());
+app.use(express.json()); // For parsing application/json - for non-file data
 
-app.use(express.json());
+// Multer configuration for file uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/'); // Files will be saved in the 'uploads/' directory
+  },
+  filename: (req, file, cb) => {
+    // Generate a unique filename: originalname + timestamp + extension
+    cb(null, file.originalname.split('.')[0] + '-' + Date.now() + path.extname(file.originalname));
+  }
+});
+const upload = multer({ storage: storage });
+
+// Serve static files from the 'uploads' directory
+// This makes files accessible via URL like http://localhost:3000/uploads/yourbook.pdf
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Configure the PostgreSQL connection pool
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  // For local Docker connections, SSL is usually not needed and can cause issues.
-  // Only enable if connecting to a remote database that requires SSL.
-  // ssl: {
-  //   rejectUnauthorized: false
-  // }
+  ssl: {
+    rejectUnauthorized: false
+  }
 });
 
 // Test database connection
@@ -32,7 +47,7 @@ pool.connect((err, client, done) => {
     return;
   }
   console.log('Successfully connected to the PostgreSQL database!');
-  done(); // Release the client back to the pool
+  done();
 });
 
 // Basic route for the home page
@@ -43,16 +58,14 @@ app.get('/', (req, res) => {
 // --- USER AUTHENTICATION ROUTES ---
 
 // User Registration
-// Changed route from /register to /api/auth/register
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { username, email, password, isAdmin } = req.body; // isAdmin is a boolean from frontend
+    const { username, email, password, isAdmin } = req.body;
 
     if (!username || !email || !password) {
       return res.status(400).json({ message: 'Username, email, and password are required.' });
     }
 
-    // Check if username or email already exists
     const existingUser = await pool.query('SELECT id FROM users WHERE username = $1 OR email = $2', [username, email]);
     if (existingUser.rows.length > 0) {
       const duplicateUsername = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
@@ -65,13 +78,11 @@ app.post('/api/auth/register', async (req, res) => {
       }
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10); // 10 salt rounds
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Insert isAdmin (boolean) directly into the is_admin column
     const result = await pool.query(
       'INSERT INTO users (username, email, password_hash, is_admin) VALUES ($1, $2, $3, $4) RETURNING id, username, email, is_admin',
-      [username, email, hashedPassword, isAdmin] // Use isAdmin directly
+      [username, email, hashedPassword, isAdmin]
     );
     res.status(201).json({ message: 'User registered successfully!', user: result.rows[0] });
   } catch (err) {
@@ -81,7 +92,6 @@ app.post('/api/auth/register', async (req, res) => {
 });
 
 // User Login
-// Changed route from /login to /api/auth/login
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -90,7 +100,6 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(400).json({ message: 'Username and password are required.' });
     }
 
-    // Find user by username
     const result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
     const user = result.rows[0];
 
@@ -98,18 +107,16 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ message: 'Invalid username or password.' });
     }
 
-    // Compare password
     const passwordMatch = await bcrypt.compare(password, user.password_hash);
 
     if (!passwordMatch) {
       return res.status(401).json({ message: 'Invalid username or password.' });
     }
 
-    // Generate JWT
     const token = jwt.sign(
-      { id: user.id, username: user.username, is_admin: user.is_admin }, // Include is_admin directly in JWT payload
+      { id: user.id, username: user.username, is_admin: user.is_admin },
       jwtSecret,
-      { expiresIn: '1h' } // Token expires in 1 hour
+      { expiresIn: '1h' }
     );
 
     res.json({
@@ -119,7 +126,7 @@ app.post('/api/auth/login', async (req, res) => {
         id: user.id,
         username: user.username,
         email: user.email,
-        is_admin: user.is_admin // Send is_admin directly
+        is_admin: user.is_admin
       }
     });
   } catch (err) {
@@ -141,33 +148,27 @@ function authenticateToken(req, res, next) {
     if (err) {
       return res.status(403).json({ message: 'Invalid or expired token.' });
     }
-    // Attach user payload to the request, expecting is_admin from JWT
     req.user = {
       id: user.id,
       username: user.username,
-      is_admin: user.is_admin // Access is_admin directly from JWT payload
+      is_admin: user.is_admin
     };
     next();
   });
 }
 
 // --- AUTHORIZATION MIDDLEWARE ---
-// This middleware now specifically checks for admin role based on is_admin boolean
-function authorizeRole(roles) { // Expects roles like ['admin']
+function authorizeRole(roles) {
   return (req, res, next) => {
-    // If 'admin' role is required and user is not admin, deny
     if (roles.includes('admin') && (!req.user || !req.user.is_admin)) {
       return res.status(403).json({ message: 'Access forbidden: Only administrators can perform this action.' });
     }
-    // If you were to add other string roles (e.g., 'moderator'),
-    // you would expand this logic, but for simple admin/user, this works.
     next();
   };
 }
 
 // --- BOOK API ENDPOINTS ---
-// Prefixed all book routes with /api/
-// GET all books (with optional search/filter and pagination)
+// GET all books (no changes)
 app.get('/api/books', async (req, res) => {
   try {
     const { search, author, isbn, published_year, page = 1, limit = 10 } = req.query;
@@ -177,7 +178,6 @@ app.get('/api/books', async (req, res) => {
     let paramIndex = 1;
     const conditions = [];
 
-    // Build WHERE clause based on provided search/filter parameters
     if (search) {
       conditions.push(`(title ILIKE $${paramIndex} OR author ILIKE $${paramIndex} OR isbn ILIKE $${paramIndex})`);
       queryParams.push(`%${search}%`);
@@ -208,14 +208,11 @@ app.get('/api/books', async (req, res) => {
       countQuery += whereClause;
     }
 
-    // Get total count first (without LIMIT/OFFSET)
     const totalCountResult = await pool.query(countQuery, queryParams);
     const totalBooks = parseInt(totalCountResult.rows[0].count, 10);
 
-    // Add ORDER BY, LIMIT, and OFFSET for pagination
     query += ' ORDER BY title ASC';
 
-    // Ensure page and limit are positive integers
     const parsedPage = Math.max(1, parseInt(page, 10));
     const parsedLimit = Math.max(1, parseInt(limit, 10));
     const offset = (parsedPage - 1) * parsedLimit;
@@ -236,7 +233,7 @@ app.get('/api/books', async (req, res) => {
   }
 });
 
-// GET a single book by ID
+// GET a single book by ID (no changes)
 app.get('/api/books/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -251,10 +248,16 @@ app.get('/api/books/:id', async (req, res) => {
   }
 });
 
-// POST a new book (requires admin role)
-app.post('/api/books', authenticateToken, authorizeRole(['admin']), async (req, res) => {
+// MODIFIED: POST a new book (requires admin role & file upload)
+// Add `upload.single('bookFile')` middleware here
+app.post('/api/books', authenticateToken, authorizeRole(['admin']), upload.single('bookFile'), async (req, res) => {
   try {
-    const { title, author, isbn, published_date, introduction, file_path } = req.body;
+    // req.file contains information about the uploaded file (thanks to multer)
+    // req.body contains other text fields
+    const { title, author, isbn, published_date, introduction } = req.body;
+    // Construct the file_path using the generated filename
+    // If no file is uploaded (shouldn't happen with `required` validation, but for safety)
+    const file_path = req.file ? `/uploads/${req.file.filename}` : null;
 
     // Basic validation for published_date (ensure it's a valid year if provided)
     let publishedYear = null;
@@ -266,8 +269,9 @@ app.post('/api/books', authenticateToken, authorizeRole(['admin']), async (req, 
       publishedYear = year;
     }
 
+    // file_path is now required for new books
     if (!title || !author || !isbn || !file_path) {
-      return res.status(400).send('Title, author, ISBN, and file path are required.');
+      return res.status(400).send('Title, author, ISBN, and book file are required.');
     }
 
     const result = await pool.query(
@@ -276,21 +280,27 @@ app.post('/api/books', authenticateToken, authorizeRole(['admin']), async (req, 
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
-    console.error('Error executing query for POST /api/books:', err.stack);
-    if (err.code === '23505') {
+    console.error('Error executing query for POST /api/books (file upload):', err.stack);
+    if (err.code === '23505') { // Check for unique constraint violation (e.g., duplicate ISBN)
       return res.status(409).send('Book with this ISBN already exists.');
     }
-    res.status(500).send('Error adding new book to database');
+    res.status(500).send('Error adding new book to database, check server logs.');
   }
 });
 
-// PUT (Update) an existing book by ID (requires admin role)
-app.put('/api/books/:id', authenticateToken, authorizeRole(['admin']), async (req, res) => {
+// MODIFIED: PUT (Update) an existing book by ID (requires admin role & optional file upload)
+// Add `upload.single('bookFile')` middleware here as well
+app.put('/api/books/:id', authenticateToken, authorizeRole(['admin']), upload.single('bookFile'), async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, author, isbn, published_date, introduction, file_path } = req.body;
+    const { title, author, isbn, published_date, introduction } = req.body; // req.body will have text fields
 
-    // Basic validation for published_date (ensure it's a valid year if provided)
+    // Determine the file_path:
+    // If a new file was uploaded (req.file exists), use its path.
+    // Otherwise, assume the frontend sent the existing file path in `req.body.current_file_path`.
+    let file_path = req.file ? `/uploads/${req.file.filename}` : req.body.current_file_path;
+
+    // Basic validation for published_date
     let publishedYear = null;
     if (published_date) {
       const year = parseInt(published_date, 10);
@@ -298,6 +308,11 @@ app.put('/api/books/:id', authenticateToken, authorizeRole(['admin']), async (re
         return res.status(400).send('Published Year must be a valid year (e.g., 1999).');
       }
       publishedYear = year;
+    }
+
+    // You might want to ensure title, author, isbn are still present
+    if (!title || !author || !isbn) {
+        return res.status(400).send('Title, author, and ISBN are required.');
     }
 
     const result = await pool.query(
@@ -309,11 +324,11 @@ app.put('/api/books/:id', authenticateToken, authorizeRole(['admin']), async (re
     }
     res.json(result.rows[0]);
   } catch (err) {
-    console.error(`Error executing query for PUT /api/books/${req.params.id}:`, err.stack);
+    console.error(`Error executing query for PUT /api/books/${req.params.id} (file upload):`, err.stack);
     if (err.code === '23505') {
       return res.status(409).send('Another book with this ISBN already exists.');
     }
-    res.status(500).send('Error updating book in database');
+    res.status(500).send('Error updating book in database, check server logs.');
   }
 });
 

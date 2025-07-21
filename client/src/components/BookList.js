@@ -1,14 +1,15 @@
 /* src/components/BookList.js */
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom'; // Added 'Link' import
+import { useNavigate, Link } from 'react-router-dom';
 import { useUser } from '../UserContext';
 import toast from 'react-hot-toast';
+import '../App.css'; // Import the App.css where BookList styles now reside
 
 function BookList() {
   const [books, setBooks] = useState([]);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
-  const { isAdmin, token, backendUrl } = useUser(); // Ensure isAdmin is correctly pulled from context
+  const { isAdmin, token, backendUrl } = useUser();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -32,7 +33,6 @@ function BookList() {
 
         const response = await fetch(url.toString());
         if (!response.ok) {
-          // It's useful to log the full response for debugging
           const errorText = await response.text();
           console.error(`Fetch error: ${response.status} - ${errorText}`);
           throw new Error(`HTTP error! Status: ${response.status} - ${errorText}`);
@@ -58,9 +58,8 @@ function BookList() {
     return () => {
       clearTimeout(handler);
     };
-  }, [backendUrl, searchTerm, currentPage, booksPerPage, token]); // Added 'token' as a dependency
+  }, [backendUrl, searchTerm, currentPage, booksPerPage, token]);
 
-  // Handle book deletion
   const handleDelete = async (bookId) => {
     if (!window.confirm('Are you sure you want to delete this book? This action cannot be undone.')) {
       return;
@@ -76,12 +75,10 @@ function BookList() {
 
       if (response.status === 204) {
         toast.success('Book deleted successfully! 🗑️');
-        // Re-fetch books intelligently to maintain pagination state
         if (books.length === 1 && currentPage > 1) {
           setCurrentPage(prevPage => prevPage - 1);
         } else {
-          // Re-fetch the current page, by re-running the useEffect
-          setBooks([]); // Triggering a state update that causes useEffect to re-run
+          setBooks([]);
         }
       } else {
         const errorData = await response.json();
@@ -93,7 +90,6 @@ function BookList() {
     }
   };
 
-  // Pagination navigation handlers
   const handlePreviousPage = () => {
     setCurrentPage(prevPage => Math.max(1, prevPage - 1));
   };
@@ -106,7 +102,6 @@ function BookList() {
     setCurrentPage(pageNumber);
   };
 
-  // Generate page numbers for display
   const pageNumbers = [];
   const safeTotalPages = isNaN(totalPages) ? 1 : totalPages;
   for (let i = 1; i <= safeTotalPages; i++) {
@@ -114,95 +109,84 @@ function BookList() {
   }
 
   if (loading) {
-    return <p>Loading books...</p>;
+    return <div className="page-container"><p>Loading books...</p></div>;
   }
 
   if (error && !loading && books.length === 0) {
-    return <p style={{ color: 'red' }}>{error}</p>;
+    return <div className="page-container"><p style={{ color: 'red' }}>{error}</p></div>;
   }
 
   return (
-    <div>
+    <div className="page-container"> {/* Main container for the BookList content */}
       <h2>All Books</h2>
 
-      {/* Add New Book Button - ONLY SHOW IF ADMIN */}
       {isAdmin && (
-        <div style={{ marginBottom: '20px' }}>
-          <Link to="/add-book" style={{
-            padding: '10px 15px',
-            backgroundColor: '#28a745', // Green color
-            color: 'white',
-            textDecoration: 'none',
-            borderRadius: '4px',
-            fontWeight: 'bold',
-            display: 'inline-block' // Ensures proper spacing if other elements are inline
-          }}>
+        <div className="add-book-section"> {/* Apply add-book-section class */}
+          <Link to="/add-book" className="add-book-button"> {/* Apply add-book-button class */}
             Add New Book ➕
           </Link>
         </div>
       )}
 
-      <div style={{ marginBottom: '20px', display: 'flex', gap: '10px', alignItems: 'center' }}>
+      <div className="search-pagination-controls"> {/* Apply search-pagination-controls class */}
         <input
           type="text"
           placeholder="Search by title, author, or ISBN..."
           value={searchTerm}
           onChange={(e) => {
             setSearchTerm(e.target.value);
-            setCurrentPage(1); // Reset to first page on new search
+            setCurrentPage(1);
           }}
-          style={{ padding: '8px', width: '300px', borderRadius: '4px', border: '1px solid #ccc' }}
+          className="search-input"
         />
-        <label htmlFor="booksPerPage" style={{ marginLeft: '20px' }}>Items per page:</label>
-        <select
-          id="booksPerPage"
-          value={booksPerPage}
-          onChange={(e) => {
-            setBooksPerPage(Number(e.target.value));
-            setCurrentPage(1); // Reset to page 1 when changing items per page
-          }}
-          style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
-        >
-          <option value="5">5</option>
-          <option value="10">10</option>
-          <option value="20">20</option>
-          <option value="50">50</option>
-        </select>
+        <div className="items-per-page-control"> {/* Apply items-per-page-control class */}
+          <label htmlFor="booksPerPage">Items per page:</label>
+          <select
+            id="booksPerPage"
+            value={booksPerPage}
+            onChange={(e) => {
+              setBooksPerPage(Number(e.target.value));
+              setCurrentPage(1);
+            }}
+          >
+            <option value="5">5</option>
+            <option value="10">10</option>
+            <option value="20">20</option>
+            <option value="50">50</option>
+          </select>
+        </div>
       </div>
 
       {books.length > 0 ? (
         <>
-          <ul>
+          <ul className="book-list"> {/* Apply book-list class */}
             {books.map((book) => (
-              <li key={book.id} style={{ border: '1px solid #eee', padding: '15px', marginBottom: '10px', borderRadius: '8px' }}>
-                <h3 style={{ margin: '0 0 5px 0' }}>{book.title}</h3>
-                <p style={{ margin: '0' }}><strong>Author:</strong> {book.author}</p>
-                <p style={{ margin: '0' }}><strong>ISBN:</strong> {book.isbn}</p>
+              <li key={book.id} className="book-item"> {/* Apply book-item class */}
+                <h3>{book.title}</h3>
+                <p><strong>Author:</strong> {book.author}</p>
+                <p><strong>ISBN:</strong> {book.isbn}</p>
                 {book.published_date && (
-                  <p style={{ margin: '0' }}>
+                  <p>
                     <strong>Published:</strong> {book.published_date}
                   </p>
                 )}
-                {book.introduction && <p style={{ fontSize: '0.9em', color: '#555' }}>{book.introduction}</p>}
+                {book.introduction && <p>{book.introduction}</p>}
 
-                {/* Edit and Delete Buttons - ONLY SHOW IF ADMIN */}
                 {isAdmin && (
-                  <div style={{ marginTop: '10px' }}>
-                    <button onClick={() => navigate(`/edit-book/${book.id}`)} style={{ marginRight: '10px', padding: '8px 12px', cursor: 'pointer' }}>Edit</button>
-                    <button onClick={() => handleDelete(book.id)} style={{ padding: '8px 12px', cursor: 'pointer', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px' }}>Delete</button>
+                  <div className="book-actions"> {/* Apply book-actions class */}
+                    <button onClick={() => navigate(`/edit-book/${book.id}`)}>Edit</button>
+                    <button onClick={() => handleDelete(book.id)}>Delete</button>
                   </div>
                 )}
               </li>
             ))}
           </ul>
 
-          {/* Pagination controls */}
-          <div style={{ marginTop: '30px', textAlign: 'center' }}>
+          <div className="pagination-controls"> {/* Apply pagination-controls class */}
             <p>Total Books: {totalBooks}</p>
             <button
               onClick={handlePreviousPage}
               disabled={currentPage === 1 || loading}
-              style={{ padding: '8px 15px', marginRight: '10px', cursor: 'pointer', border: '1px solid #007bff', borderRadius: '4px', backgroundColor: '#007bff', color: 'white' }}
             >
               Previous
             </button>
@@ -211,15 +195,7 @@ function BookList() {
                 key={number}
                 onClick={() => handlePageClick(number)}
                 disabled={loading}
-                style={{
-                  padding: '8px 15px',
-                  margin: '0 5px',
-                  cursor: 'pointer',
-                  border: `1px solid ${currentPage === number ? '#0056b3' : '#ccc'}`,
-                  borderRadius: '4px',
-                  backgroundColor: currentPage === number ? '#0056b3' : '#f8f8f8',
-                  color: currentPage === number ? 'white' : '#333'
-                }}
+                className={currentPage === number ? 'page-number-button active' : 'page-number-button'}
               >
                 {number}
               </button>
@@ -227,7 +203,6 @@ function BookList() {
             <button
               onClick={handleNextPage}
               disabled={currentPage === totalPages || loading}
-              style={{ padding: '8px 15px', marginLeft: '10px', cursor: 'pointer', border: '1px solid #007bff', borderRadius: '4px', backgroundColor: '#007bff', color: 'white' }}
             >
               Next
             </button>
@@ -235,8 +210,11 @@ function BookList() {
           </div>
         </>
       ) : (
-        // Only show 'No books found' if not loading and no error
-        !loading && !error && <p>No books found in the library. Try adding one or adjust your search.</p>
+        !loading && !error && (
+          <div className="no-books-found">
+            <p>No books found in the library. Try adding one or adjust your search.</p>
+          </div>
+        )
       )}
     </div>
   );

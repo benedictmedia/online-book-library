@@ -17,7 +17,7 @@ body {
   font-family: 'Georgia', serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  color: #faf8f8;
+  color: #0a19a1;
   line-height: 1.6;
   /* --- REMOVED BACKGROUND IMAGE STYLES FROM HERE --- */
   background-color: #3d3b3b; /* Keep fallback color */
@@ -81,17 +81,17 @@ select {
   width: 100%;
   padding: 10px;
   margin-bottom: 15px;
-  border: 1px solid #ddd;
+  border: 1px solid #f1ebeb;
   border-radius: 5px;
   font-size: 1em;
 }
 
 /* Form Styling */
 .form-container {
-  background-color: #fff;
+  background-color: rgb(243, 240, 240);
   padding: 30px;
   border-radius: 8px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 8px rgba(236, 232, 232, 0.1).1).1);
   max-width: 500px;
   margin: 40px auto;
 }
