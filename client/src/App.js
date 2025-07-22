@@ -11,6 +11,7 @@ import BookForm from './components/BookForm';
 import LoginForm from './components/LoginForm';
 import RegisterForm from './components/RegisterForm';
 import Footer from './components/Footer'; // <--- IMPORT THE FOOTER HERE
+import HelpChat from './components/HelpChat'; // Add this line
 
 const BACKGROUND_IMAGE_URL = `${process.env.PUBLIC_URL}/background-classic.jpg`;
 
@@ -60,6 +61,7 @@ function App() {
               <Route path="/edit-book/:id" element={<BookForm />} />
               <Route path="/login" element={<LoginForm />} />
               <Route path="/register" element={<RegisterForm />} />
+              <Route path="/help-chat" element={<HelpChat />} /> {/* Add this line */}
             </Routes>
           </div>
 

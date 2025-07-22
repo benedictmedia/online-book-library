@@ -18,8 +18,18 @@ function Navbar() {
         <li>
           <Link to="/books">Books</Link>
         </li>
+        {user && ( // Only show "Help Chat" if a user is logged in
+          <li>
+            <Link to="/help-chat">Help Chat 💬</Link>
+          </li>
+        )}
         {user ? (
           <>
+            {user.is_admin && ( // Only show "Add New Book" if the user is an admin
+              <li>
+                <Link to="/add-book">Add New Book</Link>
+              </li>
+            )}
             <li>
               <span>Welcome, {user.username}!</span>
             </li>
