@@ -1,0 +1,107 @@
+/* src/index.css */
+
+/* Basic resets and global box-sizing for easier layout */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+}
+
+body {
+  /* Font Styling for a Classic Mood */
+  font-family: 'Georgia', serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: #0a19a1;
+  line-height: 1.6;
+  /* --- REMOVED BACKGROUND IMAGE STYLES FROM HERE --- */
+  background-color: #3d3b3b; /* Keep fallback color */
+}
+
+/* Container for your main application content */
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  /* A slight translucent overlay to make text more readable on busy backgrounds */
+  background-color: rgba(161, 94, 94, 0.85); /* Keep overlay for content */
+  padding: 20px;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+/* General Link Styling */
+a {
+  color: #0056b3;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+a:hover {
+  color: #003366;
+  text-decoration: underline;
+}
+
+/* Basic Button Styling */
+button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1em;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  background-color: #4CAF50;
+  color: white;
+}
+
+button:hover {
+  background-color: #45a049;
+}
+
+button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+/* Basic Input Field Styling */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+textarea,
+select {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 15px;
+  border: 1px solid #f1ebeb;
+  border-radius: 5px;
+  font-size: 1em;
+}
+
+/* Form Styling */
+.form-container {
+  background-color: rgb(243, 240, 240);
+  padding: 30px;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(236, 232, 232, 0.1).1).1);
+  max-width: 500px;
+  margin: 40px auto;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}

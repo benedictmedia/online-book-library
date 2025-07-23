@@ -7,7 +7,7 @@ const jwt = require('jsonwebtoken');
 const app = express();
 const cors = require('cors');
 const multer = require('multer');
-const path = require('path');
+const path = require('path'); // Add this line
 
 const port = process.env.PORT || 3000;
 const jwtSecret = process.env.JWT_SECRET;
@@ -50,7 +50,7 @@ pool.connect((err, client, done) => {
     done();
 });
 
-// Basic route for the home page
+// Basic route for the home page (This will be overridden by the catch-all if in production/build mode)
 app.get('/', (req, res) => {
     res.send('Welcome to the Online Book Library Backend!');
 });
@@ -395,6 +395,18 @@ app.post('/api/books/:bookId/comments', authenticateToken, async (req, res) => {
         res.status(500).json({ error: 'Internal server error adding comment.' });
     }
 });
+
+// --- NEW ADDITION: Serve React Frontend ---
+// This block should be placed AFTER all your API routes.
+// It ensures that any non-API requests are handled by your React app.
+if (process.env.NODE_ENV === 'production') {
+    app.use(express.static(path.join(__dirname, 'client', 'build')));
+
+    app.get('*', (req, res) => {
+        res.sendFile(path.resolve(__dirname, 'client', 'build', 'index.html'));
+    });
+}
+// --- END NEW ADDITION ---
 
 // Start the server
 app.listen(port, () => {
